@@ -2,7 +2,7 @@
 
 This is the living project record for the Landing Page SaaS Homepage Optimizer. Keep it accurate as the project evolves; do not turn it into a copy of implementation details or issue text.
 
-**Last updated:** 2026-09-26
+**Last updated:** 2026-09-27
 **Canonical PRD:** [GitHub issue #1](https://github.com/joydeep10/Landing-page-saas-homepage-optimizer-/issues/1)
 **Delivery plan:** [Issues #2–#9](https://github.com/joydeep10/Landing-page-saas-homepage-optimizer-/issues)
 
@@ -54,7 +54,7 @@ A page owner submits one conversion-focused landing-page URL and their intended 
 
 | Issue | Vertical slice | Status |
 | --- | --- | --- |
-| #2 | Capture one landing page and show a local preview | Not started |
+| #2 | Capture one landing page and show a local preview | Complete |
 | #3 | Audit captured copy with Jev's universal questions | Not started |
 | #4 | Add generated niche questions | Not started |
 | #5 | Suggest safe copy changes below 80 | Not started |
@@ -65,10 +65,11 @@ A page owner submits one conversion-focused landing-page URL and their intended 
 
 ## Current repository state
 
-- The GitHub repository contains only a placeholder README and planning issues; application code has not been scaffolded.
-- The local repository now has the initial directory skeleton, a secure `.gitignore`, and a redacted `.env.example`; the folders intentionally contain no application logic yet.
-- The starter approach is agreed: a lean Next.js/TypeScript App Router codebase with Tailwind, shadcn/ui, Playwright, Zod, server-only provider clients, and a local Node runtime. Do not start from a full auth/Stripe/database SaaS boilerplate.
-- Root `AGENTS.md` and this context file were added on 2026-09-26.
+- Issue #2 is implemented as a small Next.js App Router/TypeScript application with a Node.js capture route, Zod-validated intake, Playwright/Chromium capture, and a controlled `/demo` landing page.
+- Each successful capture creates a one-hour in-memory run keyed by a unique run ID. It retains authoritative Page intent, an immutable capture version, capture-scoped block references and locations, original text, and the static snapshot. Process restarts clear this prototype state.
+- Capture validates submitted and browser-request URLs at every HTTP(S) request in a fresh Playwright context with service workers blocked. Production denies loopback, private, link-local, multicast, unspecified, cloud-metadata, and documentation/test address ranges; private capture is available only when the non-production `ALLOW_PRIVATE_CAPTURE=true` configuration is explicit. Capture has bounded document, individual-resource, total-response, stylesheet, visible-copy, and snapshot limits; `CAPTURE_MAX_COPY_CHARACTERS` optionally overrides the default 30,000-character visible-copy ceiling.
+- The preview is sanitized static HTML in an iframe sandboxed with `allow-same-origin` only. Source scripts, event handlers, active/nested frames, form submission, navigation, and raw-text serialization hazards are removed. Captured stylesheets are sanitized and inlined; remaining resource URLs are absolute only when the capture browser admitted them.
+- The first slice stops after capture and preview; it deliberately contains no provider calls, scoring, suggested edits, or persistence beyond the active one-hour run.
 
 ## Open decisions
 
@@ -80,3 +81,4 @@ A page owner submits one conversion-focused landing-page URL and their intended 
 
 - **2026-09-26:** Reviewed PRD and vertical-slice issues; confirmed the lean Next.js/TypeScript architecture and documented the initial context and repository guidance.
 - **2026-09-26:** Created the initial application, domain, server, and test directory skeleton; no vertical-slice implementation has started.
+- **2026-09-27:** Completed Issue #2: scaffolded the Next.js application; added validated Node/Playwright page capture, SSRF-aware URL policy, immutable capture blocks and one-hour run state, a sanitized static iframe preview, local demo page, and focused validation/capture tests.
