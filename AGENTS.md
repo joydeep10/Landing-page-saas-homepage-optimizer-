@@ -61,3 +61,13 @@ Read [`project-context.md`](./project-context.md) only when the task needs the c
 - Keep `README.md` focused on setup and usage once the application exists.
 - Keep `project-context.md` factual and concise: current state, confirmed decisions, scope, open decisions, and a dated change log. Link to the canonical GitHub issue rather than duplicating its full PRD.
 - Add a nested `AGENTS.md` only when a directory has durable, subsystem-specific rules that would otherwise burden every task.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
