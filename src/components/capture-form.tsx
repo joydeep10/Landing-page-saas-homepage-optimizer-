@@ -2,6 +2,9 @@
 
 import { FormEvent, useState } from "react";
 
+import { AuditResults } from "./audit-results";
+import type { UniversalAudit } from "../domain/universal-audit";
+
 interface CaptureResponse {
   runId: string;
   capture: {
@@ -13,14 +16,22 @@ interface CaptureResponse {
   };
 }
 
+interface AuditResponse {
+  runId: string;
+  audit: UniversalAudit;
+}
+
 export function CaptureForm() {
   const [url, setUrl] = useState("");
   const [audience, setAudience] = useState("");
   const [primaryAction, setPrimaryAction] = useState("");
   const [trafficSource, setTrafficSource] = useState("");
   const [result, setResult] = useState<CaptureResponse | null>(null);
+  const [audit, setAudit] = useState<UniversalAudit | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isAuditing, setIsAuditing] = useState(false);
 
   const useLocalDemo = () => {
     setUrl(`${window.location.origin}/demo`);
@@ -28,12 +39,15 @@ export function CaptureForm() {
     setPrimaryAction("Start a free trial");
     setTrafficSource("Direct product research");
     setError(null);
+    setAuditError(null);
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setResult(null);
+    setAudit(null);
+    setAuditError(null);
     setIsCapturing(true);
 
     try {
@@ -52,6 +66,31 @@ export function CaptureForm() {
       setError("The capture request could not be completed. Check that the local server is running.");
     } finally {
       setIsCapturing(false);
+    }
+  };
+
+  const runAudit = async () => {
+    if (!result) return;
+
+    setAuditError(null);
+    setIsAuditing(true);
+
+    try {
+      const response = await fetch("/api/audits", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ runId: result.runId }),
+      });
+      const payload = (await response.json()) as AuditResponse | { error?: string };
+      if (!response.ok || !("audit" in payload)) {
+        setAuditError("error" in payload ? payload.error ?? "Audit failed." : "Audit failed.");
+        return;
+      }
+      setAudit(payload.audit);
+    } catch {
+      setAuditError("The audit request could not be completed. Check that the local server is running.");
+    } finally {
+      setIsAuditing(false);
     }
   };
 
@@ -107,6 +146,20 @@ export function CaptureForm() {
             <h2>Extracted visible copy</h2>
             <pre>{result.capture.extractedText}</pre>
           </div>
+          <div className="audit-action">
+            <div>
+              <h2>Ready to audit this captured copy?</h2>
+              <p>
+                Run the ten fixed universal questions against this immutable capture and the page
+                intent you provided.
+              </p>
+            </div>
+            <button type="button" onClick={runAudit} disabled={isAuditing || Boolean(audit)}>
+              {audit ? "Universal audit complete" : isAuditing ? "Auditing…" : "Run universal audit"}
+            </button>
+          </div>
+          {auditError ? <p className="notice error audit-error" role="alert">{auditError}</p> : null}
+          {audit ? <AuditResults audit={audit} /> : null}
         </section>
       ) : null}
     </>

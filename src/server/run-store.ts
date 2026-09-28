@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { PageCapture } from "../domain/capture";
 import type { CaptureRequest } from "../domain/capture-request";
+import type { JevUniversalAudit } from "./jev";
 
 const RUN_TTL_MS = 60 * 60 * 1_000;
 
@@ -11,6 +12,7 @@ export interface CaptureRun {
   capture: PageCapture;
   createdAt: number;
   expiresAt: number;
+  universalAudit?: JevUniversalAudit;
 }
 
 const runs = new Map<string, CaptureRun>();
@@ -39,4 +41,10 @@ export function getCaptureRun(runId: string): CaptureRun | undefined {
   const now = Date.now();
   removeExpiredRuns(now);
   return runs.get(runId);
+}
+
+export function saveUniversalAudit(runId: string, audit: JevUniversalAudit): void {
+  const run = getCaptureRun(runId);
+  if (!run) return;
+  run.universalAudit = audit;
 }

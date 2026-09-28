@@ -55,7 +55,7 @@ A page owner submits one conversion-focused landing-page URL and their intended 
 | Issue | Vertical slice | Status |
 | --- | --- | --- |
 | #2 | Capture one landing page and show a local preview | Complete |
-| #3 | Audit captured copy with Jev's universal questions | Not started |
+| #3 | Audit captured copy with Jev's universal questions | Complete |
 | #4 | Add generated niche questions | Not started |
 | #5 | Suggest safe copy changes below 80 | Not started |
 | #6 | Apply individually approved changes locally | Not started |
@@ -69,7 +69,9 @@ A page owner submits one conversion-focused landing-page URL and their intended 
 - Each successful capture creates a one-hour in-memory run keyed by a unique run ID. It retains authoritative Page intent, an immutable capture version, capture-scoped block references and locations, original text, and the static snapshot. Process restarts clear this prototype state.
 - Capture validates submitted and browser-request URLs at every HTTP(S) request in a fresh Playwright context with service workers blocked. Production denies loopback, private, link-local, multicast, unspecified, cloud-metadata, and documentation/test address ranges; private capture is available only when the non-production `ALLOW_PRIVATE_CAPTURE=true` configuration is explicit. Capture has bounded document, individual-resource, total-response, stylesheet, visible-copy, and snapshot limits; `CAPTURE_MAX_COPY_CHARACTERS` optionally overrides the default 30,000-character visible-copy ceiling.
 - The preview is sanitized static HTML in an iframe sandboxed with `allow-same-origin` only. Source scripts, event handlers, active/nested frames, form submission, navigation, and raw-text serialization hazards are removed. Captured stylesheets are sanitized and inlined; remaining resource URLs are absolute only when the capture browser admitted them.
-- The first slice stops after capture and preview; it deliberately contains no provider calls, scoring, suggested edits, or persistence beyond the active one-hour run.
+- The implemented flow currently stops after the original universal audit and static preview; it deliberately contains no niche questions, writer suggestions, edit application, re-audit, cost UI, or persistence beyond the active one-hour run.
+- Issue #3 adds one server-side OpenRouter Decisions API call for the ten fixed universal Jev Score questions. It sends only the immutable extracted visible copy in reading order and the authoritative Page intent; raw HTML, styling, screenshots, and visual hierarchy are outside the audit state. The provider contract validates score answers, probabilities, confidence, and usage; the active run retains only the calculated audit and minimal usage metadata, while the browser receives only the displayed universal results, whole score, and verdict.
+- Universal scoring remains deterministic application code: each 0–4 Jev score is normalized to 0–100, the ten unrounded values are averaged equally, the total is rounded once, and the fixed 80/50 verdict boundaries are applied. The run returns a bounded error on missing configuration, timeout, provider failure, or an incomplete/invalid Decisions response. A completed valid audit is reused for that immutable capture rather than issuing another provider call.
 
 ## Open decisions
 
@@ -82,3 +84,4 @@ A page owner submits one conversion-focused landing-page URL and their intended 
 - **2026-09-26:** Reviewed PRD and vertical-slice issues; confirmed the lean Next.js/TypeScript architecture and documented the initial context and repository guidance.
 - **2026-09-26:** Created the initial application, domain, server, and test directory skeleton; no vertical-slice implementation has started.
 - **2026-09-27:** Completed Issue #2: scaffolded the Next.js application; added validated Node/Playwright page capture, SSRF-aware URL policy, immutable capture blocks and one-hour run state, a sanitized static iframe preview, local demo page, and focused validation/capture tests.
+- **2026-09-27:** Completed Issue #3: added the server-only OpenRouter/Jev Decisions API integration for the ten fixed universal Score questions, strict Zod-validated provider handling, deterministic score/verdict calculation, single-flight per-run audit caching, and the capture-to-audit results UI.
