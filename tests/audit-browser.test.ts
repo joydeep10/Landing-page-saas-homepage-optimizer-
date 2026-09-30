@@ -29,6 +29,26 @@ const auditResponse = {
   audit: calculateUniversalAudit(
     UNIVERSAL_AUDIT_QUESTIONS.map((question) => ({ id: question.id, score: 3 })),
   ),
+  niche: {
+    label: "Release coordination software",
+    results: [
+      {
+        id: "niche_1",
+        question: "Does the page explain how teams coordinate release work?",
+        yesProbability: 0.88,
+      },
+      {
+        id: "niche_2",
+        question: "Does the page communicate how release status stays visible to the team?",
+        yesProbability: 0.76,
+      },
+      {
+        id: "niche_3",
+        question: "Does the page make the free-trial next step clear for release teams?",
+        yesProbability: 0.64,
+      },
+    ],
+  },
 };
 
 let server: ChildProcess;
@@ -102,7 +122,7 @@ afterAll(async () => {
 });
 
 describe("capture-to-audit browser flow", () => {
-  it("renders all ten universal results after a completed capture", async () => {
+  it("renders universal and generated niche results after a completed capture", async () => {
     const page = await browser.newPage();
     const browserErrors: string[] = [];
     try {
@@ -137,12 +157,16 @@ describe("capture-to-audit browser flow", () => {
       await page.getByRole("heading", { name: "Static local preview" }).waitFor();
 
       const auditRequest = page.waitForRequest((request) => request.url().endsWith("/api/audits"));
-      await page.getByRole("button", { name: "Run universal audit" }).click();
+      await page.getByRole("button", { name: "Run complete audit" }).click();
       await auditRequest;
       await page.getByRole("heading", { name: "Universal copy audit" }).waitFor();
       await page.getByText("75 / 100").waitFor();
       await page.getByText("Needs Improvement").waitFor();
       expect(await page.locator(".audit-question").count()).toBe(10);
+      await page.getByRole("heading", { name: "Generated niche questions" }).waitFor();
+      expect(await page.getByText("Release coordination software").count()).toBeGreaterThan(0);
+      expect(await page.locator(".niche-question").count()).toBe(3);
+      await page.getByText("88% yes probability").waitFor();
     } finally {
       await page.close();
     }

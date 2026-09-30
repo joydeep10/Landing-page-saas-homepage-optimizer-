@@ -26,8 +26,8 @@ function validProviderResponse() {
     model: "typesafe/jev-1.13-20260917",
     id: "decision_123",
     provider: "typesafe",
-    answers: Object.fromEntries(
-      UNIVERSAL_AUDIT_QUESTIONS.map((question) => [
+    answers: {
+      ...Object.fromEntries(UNIVERSAL_AUDIT_QUESTIONS.map((question) => [
         question.id,
         {
           type: "score",
@@ -36,10 +36,50 @@ function validProviderResponse() {
           probabilities: { "0": 0, "1": 0, "2": 0, "3": 1, "4": 0 },
           confidence: 1,
         },
-      ]),
-    ),
+      ])),
+      niche_1: { type: "noul", noul: 0.88 },
+      niche_2: { type: "noul", noul: 0.76 },
+      niche_3: { type: "noul", noul: 0.64 },
+    },
     usage: { input_tokens: 420, output_tokens: 30, cost: 0.000018 },
   };
+}
+
+function validNicheResponse() {
+  return {
+    status: "completed",
+    output: [
+      {
+        type: "message",
+        content: [
+          {
+            type: "output_text",
+            text: JSON.stringify({
+              niche: "Release coordination software",
+              questions: [
+                "Does the page explain how teams coordinate release work?",
+                "Does the page communicate how release status stays visible to the team?",
+                "Does the page make the free-trial next step clear for release teams?",
+              ],
+            }),
+          },
+        ],
+      },
+    ],
+    usage: { input_tokens: 420, output_tokens: 30 },
+  };
+}
+
+function successfulProviderFetch() {
+  return vi.fn<typeof fetch>((url) => {
+    if (url === "https://api.openai.com/v1/responses") {
+      return Promise.resolve(Response.json(validNicheResponse()));
+    }
+    if (url === "https://openrouter.ai/api/alpha/decisions") {
+      return Promise.resolve(Response.json(validProviderResponse()));
+    }
+    return Promise.reject(new Error("Unexpected provider URL"));
+  });
 }
 
 function auditRequest(runId: string) {
@@ -52,10 +92,10 @@ function auditRequest(runId: string) {
 
 describe("POST /api/audits", () => {
   it("audits a valid stored capture and returns only the public audit result", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "unit-test-openai-credential");
+    vi.stubEnv("OPENAI_NICHE_MODEL", "gpt-4o-mini-2024-07-18");
     vi.stubEnv("OPENROUTER_API_KEY", "unit-test-credential");
-    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
-      Response.json(validProviderResponse()),
-    );
+    const fetchImplementation = successfulProviderFetch();
     vi.stubGlobal("fetch", fetchImplementation);
     const run = createStoredRun();
 
@@ -66,26 +106,27 @@ describe("POST /api/audits", () => {
     expect(body).toMatchObject({
       runId: run.id,
       audit: { overallScore: 75, verdict: "Needs Improvement" },
+      niche: { label: "Release coordination software" },
     });
     expect(JSON.stringify(body)).not.toContain("unit-test-credential");
     expect(JSON.stringify(body)).not.toContain("input_tokens");
     expect(JSON.stringify(body)).not.toContain("probabilities");
     expect(JSON.stringify(body)).not.toContain("confidence");
-    expect(fetchImplementation).toHaveBeenCalledTimes(1);
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
 
     const cachedResponse = await POST(auditRequest(run.id));
     expect(cachedResponse.status).toBe(200);
-    expect(fetchImplementation).toHaveBeenCalledTimes(1);
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
 
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
 
   it("shares a single provider call across concurrent requests for the same capture run", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "unit-test-openai-credential");
+    vi.stubEnv("OPENAI_NICHE_MODEL", "gpt-4o-mini-2024-07-18");
     vi.stubEnv("OPENROUTER_API_KEY", "unit-test-credential");
-    const fetchImplementation = vi.fn<typeof fetch>().mockResolvedValue(
-      Response.json(validProviderResponse()),
-    );
+    const fetchImplementation = successfulProviderFetch();
     vi.stubGlobal("fetch", fetchImplementation);
     const run = createStoredRun();
 
@@ -96,7 +137,7 @@ describe("POST /api/audits", () => {
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
-    expect(fetchImplementation).toHaveBeenCalledTimes(1);
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
 
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
@@ -112,13 +153,17 @@ describe("POST /api/audits", () => {
     );
     expect(invalid.status).toBe(400);
 
+    vi.stubEnv("OPENAI_API_KEY", "unit-test-openai-credential");
+    vi.stubEnv("OPENAI_NICHE_MODEL", "gpt-4o-mini-2024-07-18");
     vi.stubEnv("OPENROUTER_API_KEY", "unit-test-credential");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<typeof fetch>().mockResolvedValue(
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>((url) => {
+      if (url === "https://api.openai.com/v1/responses") {
+        return Promise.resolve(Response.json(validNicheResponse()));
+      }
+      return Promise.resolve(
         new Response("provider diagnostic that must not reach the UI", { status: 500 }),
-      ),
-    );
+      );
+    }));
     const run = createStoredRun();
 
     const response = await POST(auditRequest(run.id));

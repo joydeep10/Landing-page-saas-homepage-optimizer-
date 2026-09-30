@@ -1,6 +1,10 @@
-import type { UniversalAudit } from "../domain/universal-audit";
-import { auditCapturedCopyWithJev, type JevUniversalAudit } from "./jev";
-import { getCaptureRun, saveUniversalAudit } from "./run-store";
+import { auditCapturedCopyWithJev, type JevAudit } from "./jev";
+import { generateNicheQuestions } from "./niche-questions";
+import {
+  getCaptureRun,
+  saveAudit,
+  saveNicheQuestionGeneration,
+} from "./run-store";
 
 export class AuditRunError extends Error {
   constructor(public readonly kind: "not_found", message: string) {
@@ -9,26 +13,35 @@ export class AuditRunError extends Error {
   }
 }
 
-const inFlightAudits = new Map<string, Promise<UniversalAudit>>();
+const inFlightAudits = new Map<string, Promise<JevAudit>>();
 
-export async function auditStoredCaptureRun(runId: string): Promise<UniversalAudit> {
+export async function auditStoredCaptureRun(runId: string): Promise<JevAudit> {
   const run = getCaptureRun(runId);
   if (!run) {
     throw new AuditRunError("not_found", "This capture run is no longer available. Capture the page again.");
   }
 
-  if (run.universalAudit) return run.universalAudit.audit;
+  if (run.audit) return run.audit;
 
   const inFlightAudit = inFlightAudits.get(runId);
   if (inFlightAudit) return inFlightAudit;
 
   const audit = (async () => {
+    const nicheGeneration =
+      run.nicheGeneration ??
+      (await generateNicheQuestions({
+        intent: run.intent,
+        extractedText: run.capture.extractedText,
+      }));
+    if (!run.nicheGeneration) saveNicheQuestionGeneration(run.id, nicheGeneration);
+
     const audited = await auditCapturedCopyWithJev({
       intent: run.intent,
       extractedText: run.capture.extractedText,
+      nicheQuestionSet: nicheGeneration.questionSet,
     });
-    saveUniversalAudit(run.id, audited);
-    return audited.audit;
+    saveAudit(run.id, audited);
+    return audited;
   })();
   inFlightAudits.set(runId, audit);
 
@@ -39,4 +52,4 @@ export async function auditStoredCaptureRun(runId: string): Promise<UniversalAud
   }
 }
 
-export type { JevUniversalAudit };
+export type { JevAudit };

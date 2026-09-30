@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 
 import { AuditResults } from "./audit-results";
 import type { UniversalAudit } from "../domain/universal-audit";
+import type { NicheAudit } from "../domain/niche-questions";
 
 interface CaptureResponse {
   runId: string;
@@ -19,6 +20,7 @@ interface CaptureResponse {
 interface AuditResponse {
   runId: string;
   audit: UniversalAudit;
+  niche: NicheAudit;
 }
 
 export function CaptureForm() {
@@ -28,6 +30,7 @@ export function CaptureForm() {
   const [trafficSource, setTrafficSource] = useState("");
   const [result, setResult] = useState<CaptureResponse | null>(null);
   const [audit, setAudit] = useState<UniversalAudit | null>(null);
+  const [niche, setNiche] = useState<NicheAudit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -47,6 +50,7 @@ export function CaptureForm() {
     setError(null);
     setResult(null);
     setAudit(null);
+    setNiche(null);
     setAuditError(null);
     setIsCapturing(true);
 
@@ -82,11 +86,12 @@ export function CaptureForm() {
         body: JSON.stringify({ runId: result.runId }),
       });
       const payload = (await response.json()) as AuditResponse | { error?: string };
-      if (!response.ok || !("audit" in payload)) {
+      if (!response.ok || !("audit" in payload) || !("niche" in payload)) {
         setAuditError("error" in payload ? payload.error ?? "Audit failed." : "Audit failed.");
         return;
       }
       setAudit(payload.audit);
+      setNiche(payload.niche);
     } catch {
       setAuditError("The audit request could not be completed. Check that the local server is running.");
     } finally {
@@ -150,16 +155,16 @@ export function CaptureForm() {
             <div>
               <h2>Ready to audit this captured copy?</h2>
               <p>
-                Run the ten fixed universal questions against this immutable capture and the page
-                intent you provided.
+                Run the ten fixed universal questions and three generated niche questions against
+                this immutable capture and the page intent you provided.
               </p>
             </div>
             <button type="button" onClick={runAudit} disabled={isAuditing || Boolean(audit)}>
-              {audit ? "Universal audit complete" : isAuditing ? "Auditing…" : "Run universal audit"}
+              {audit ? "Audit complete" : isAuditing ? "Auditing…" : "Run complete audit"}
             </button>
           </div>
           {auditError ? <p className="notice error audit-error" role="alert">{auditError}</p> : null}
-          {audit ? <AuditResults audit={audit} /> : null}
+          {audit && niche ? <AuditResults audit={audit} niche={niche} /> : null}
         </section>
       ) : null}
     </>

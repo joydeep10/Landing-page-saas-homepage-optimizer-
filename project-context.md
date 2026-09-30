@@ -2,7 +2,7 @@
 
 This is the living project record for the Landing Page SaaS Homepage Optimizer. Keep it accurate as the project evolves; do not turn it into a copy of implementation details or issue text.
 
-**Last updated:** 2026-09-27
+**Last updated:** 2026-09-30
 **Canonical PRD:** [GitHub issue #1](https://github.com/joydeep10/Landing-page-saas-homepage-optimizer-/issues/1)
 **Delivery plan:** [Issues #2–#9](https://github.com/joydeep10/Landing-page-saas-homepage-optimizer-/issues)
 
@@ -56,12 +56,12 @@ A page owner submits one conversion-focused landing-page URL and their intended 
 | --- | --- | --- |
 | #2 | Capture one landing page and show a local preview | Complete |
 | #3 | Audit captured copy with Jev's universal questions | Complete |
-| #4 | Add generated niche questions | Not started |
-| #5 | Suggest safe copy changes below 80 | Not started |
-| #6 | Apply individually approved changes locally | Not started |
-| #7 | Resolve ambiguous edit targets in preview | Not started |
-| #8 | Re-audit the revised draft once | Not started |
-| #9 | Show whole-run cost and verify real-API demo | Not started |
+| #4 | Add generated niche questions | Complete |
+| #5 | Build the audit dashboard and show recommended copy improvements | Not started |
+| #6 | Apply individually approved changes locally | Deferred |
+| #7 | Resolve ambiguous edit targets in preview | Deferred |
+| #8 | Re-audit the revised draft once | Deferred |
+| #9 | Show whole-run cost and verify real-API demo | Deferred |
 
 ## Current repository state
 
@@ -69,13 +69,16 @@ A page owner submits one conversion-focused landing-page URL and their intended 
 - Each successful capture creates a one-hour in-memory run keyed by a unique run ID. It retains authoritative Page intent, an immutable capture version, capture-scoped block references and locations, original text, and the static snapshot. Process restarts clear this prototype state.
 - Capture validates submitted and browser-request URLs at every HTTP(S) request in a fresh Playwright context with service workers blocked. Production denies loopback, private, link-local, multicast, unspecified, cloud-metadata, and documentation/test address ranges; private capture is available only when the non-production `ALLOW_PRIVATE_CAPTURE=true` configuration is explicit. Capture has bounded document, individual-resource, total-response, stylesheet, visible-copy, and snapshot limits; `CAPTURE_MAX_COPY_CHARACTERS` optionally overrides the default 30,000-character visible-copy ceiling.
 - The preview is sanitized static HTML in an iframe sandboxed with `allow-same-origin` only. Source scripts, event handlers, active/nested frames, form submission, navigation, and raw-text serialization hazards are removed. Captured stylesheets are sanitized and inlined; remaining resource URLs are absolute only when the capture browser admitted them.
-- The implemented flow currently stops after the original universal audit and static preview; it deliberately contains no niche questions, writer suggestions, edit application, re-audit, cost UI, or persistence beyond the active one-hour run.
-- Issue #3 adds one server-side OpenRouter Decisions API call for the ten fixed universal Jev Score questions. It sends only the immutable extracted visible copy in reading order and the authoritative Page intent; raw HTML, styling, screenshots, and visual hierarchy are outside the audit state. The provider contract validates score answers, probabilities, confidence, and usage; the active run retains only the calculated audit and minimal usage metadata, while the browser receives only the displayed universal results, whole score, and verdict.
+- The implemented flow currently stops after the original combined audit and static preview; it deliberately contains no writer suggestions, edit application, re-audit, cost UI, or persistence beyond the active one-hour run.
+- Issue #3 adds one server-side OpenRouter Decisions API call for the ten fixed universal Jev Score questions. It sends only the immutable extracted visible copy in reading order and the authoritative Page intent; raw HTML, styling, screenshots, and visual hierarchy are outside the audit state.
+- Issue #4 adds one server-only OpenAI Responses API Structured Outputs call before the Jev request. It requires server-held `OPENAI_API_KEY` and a configurable pinned `OPENAI_NICHE_MODEL`, uses `store: false`, and sends Page intent plus delimited immutable copy as untrusted data. Application code accepts only one short niche label and exactly three distinct positive yes/no questions, assigns stable `niche_1` through `niche_3` IDs, stores that exact set plus token usage with the run, and returns a bounded error without calling Jev on OpenAI failure. Generated question text is re-delimited as untrusted data for the Jev provider; instruction-like, negative-polarity, multi-part, and basic universal-restatement output is rejected.
+- The same initial Jev Decisions request now includes the ten universal Score questions and the retained three niche Noul questions. All thirteen typed answers are required; the browser shows the niche label, question strings, and yes probabilities separately from the ten universal results. The active run retains only the calculated universal audit, niche answers, and minimal provider usage metadata. Niche probabilities never enter the deterministic 0–100 score or verdict.
 - Universal scoring remains deterministic application code: each 0–4 Jev score is normalized to 0–100, the ten unrounded values are averaged equally, the total is rounded once, and the fixed 80/50 verdict boundaries are applied. The run returns a bounded error on missing configuration, timeout, provider failure, or an incomplete/invalid Decisions response. A completed valid audit is reused for that immutable capture rather than issuing another provider call.
+- The next planned slice is a view-only audit dashboard. Below an overall universal score of 80, it will automatically make one bounded OpenAI writer call and show up to ten ordered recommendations—at most one per weak universal dimension—or an information-needed outcome. Each recommendation will show an exact captured-copy quote, safe recommended copy, and a dimension-linked rationale; it will neither expose editing controls nor modify the local preview. Strong results will instead show a deterministic, score-derived “What’s working well” summary. Recommendation provider failures will leave the valid audit visible with an explicit unavailable state.
 
 ## Open decisions
 
-- Exact OpenAI model IDs and configured cost rates for the niche and writer calls.
+- Production OpenAI model selection and configured cost rates for the niche and writer calls; the niche adapter requires an explicit pinned `OPENAI_NICHE_MODEL` but does not prescribe one.
 - Local/demo and production deployment packaging, including the production egress/SSRF controls.
 - The final visual design system and component composition.
 
@@ -85,3 +88,5 @@ A page owner submits one conversion-focused landing-page URL and their intended 
 - **2026-09-26:** Created the initial application, domain, server, and test directory skeleton; no vertical-slice implementation has started.
 - **2026-09-27:** Completed Issue #2: scaffolded the Next.js application; added validated Node/Playwright page capture, SSRF-aware URL policy, immutable capture blocks and one-hour run state, a sanitized static iframe preview, local demo page, and focused validation/capture tests.
 - **2026-09-27:** Completed Issue #3: added the server-only OpenRouter/Jev Decisions API integration for the ten fixed universal Score questions, strict Zod-validated provider handling, deterministic score/verdict calculation, single-flight per-run audit caching, and the capture-to-audit results UI.
+- **2026-09-29:** Completed Issue #4: added server-only OpenAI Structured Outputs niche generation with validated stable question IDs, retained it with the active run, submitted the resulting three Noul questions with the fixed universal Jev questions, and rendered informative niche probabilities without changing universal scoring. Hardened the OpenAI-to-Jev handoff by rejecting instruction-like, negative-polarity, multi-part, and basic universal-restatement questions and treating retained question text as untrusted data.
+- **2026-09-30:** Re-scoped Issue #5 as a view-only audit dashboard and automatic, bounded recommended-copy experience. Deferred edit application, ambiguity resolution, re-audit, and cost/real-provider-demo work to later issues.
