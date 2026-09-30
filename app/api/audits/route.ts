@@ -6,6 +6,7 @@ import {
 } from "../../../src/domain/audit-request";
 import { AuditRunError, auditStoredCaptureRun } from "../../../src/server/audit-run";
 import { JevAuditError } from "../../../src/server/jev";
+import { NicheQuestionGenerationError } from "../../../src/server/niche-questions";
 
 export const runtime = "nodejs";
 
@@ -37,9 +38,9 @@ async function readJsonBody(request: Request): Promise<unknown> {
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const input = parseAuditRequest(await readJsonBody(request));
-    const audit = await auditStoredCaptureRun(input.runId);
+    const result = await auditStoredCaptureRun(input.runId);
 
-    return NextResponse.json({ runId: input.runId, audit });
+    return NextResponse.json({ runId: input.runId, audit: result.audit, niche: result.niche });
   } catch (error) {
     if (error instanceof AuditRequestValidationError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
@@ -52,9 +53,14 @@ export async function POST(request: Request): Promise<NextResponse> {
         error.kind === "configuration" ? 503 : error.kind === "timeout" ? 504 : 502;
       return NextResponse.json({ error: error.message, kind: error.kind }, { status });
     }
+    if (error instanceof NicheQuestionGenerationError) {
+      const status =
+        error.kind === "configuration" ? 503 : error.kind === "timeout" ? 504 : 502;
+      return NextResponse.json({ error: error.message, kind: error.kind }, { status });
+    }
 
     return NextResponse.json(
-      { error: "The Jev audit could not be completed. Try again." },
+      { error: "The audit could not be completed. Try again." },
       { status: 500 },
     );
   }
